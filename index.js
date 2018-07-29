@@ -52,6 +52,7 @@ app.use(function(req,res,next){
 
 const ideas = require('./routes/ideas');
 const users = require('./routes/users');
+const web3 = require('./routes/web3');
 
 
 //passport config
@@ -73,7 +74,10 @@ app.get('/about', (req,res)=>{
 app.use('/ideas',ideas);
 //use users Routes
 app.use('/users',users);
-
+//web 3 routes for testing
+app.use('/web3',web3);
+//auth routes 
+app.use('/auth',users);
 
 const port = process.env.PORT || 5000;
 app.listen(port, () =>{

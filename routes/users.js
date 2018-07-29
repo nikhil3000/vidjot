@@ -5,10 +5,11 @@ const passport = require('passport');
 
 const route = express.Router();
 
-//Load user model
+//Load db model
 require('../models/users');
+require('../models/emailtoid');
 const User = mongoose.model('users');
-
+const e_id = mongoose.model('emailtoid');
 //User Login Route
 route.get('/login',(req,res)=>{
 	res.render('users/login');
@@ -24,6 +25,15 @@ route.post('/login',(req,res,next)=>{
 		failureRedirect: '/users/login',
 		failureFlash: true
 	})(req,res,next);
+});
+
+route.get('/google',passport.authenticate('google',{scope: ['profile','email']}));
+
+route.get('/google/callback', 
+	passport.authenticate('google', { failureRedirect: '/users/login' }),
+	(req, res)=> {
+    // Successful authentication, redirect home.
+    res.redirect('/ideas');
 });
 
 //Register from post
@@ -48,7 +58,7 @@ route.post('/register',(req,res)=> {
 	}
 	else
 	{
-		User.findOne({email:req.body.email})
+		e_id.findOne({email:req.body.email})
 		.then(user => 
 		{
 			if(user)
@@ -58,30 +68,43 @@ route.post('/register',(req,res)=> {
 			}
 			else
 			{
-				const newUser = new User(
-				{
-					name: req.body.name,
-					email: req.body.email,
-					password: req.body.password
-				});
+				const eid = new e_id(
+				{	
+					email: req.body.email
 
-				bcrypt.genSalt(10,(err,salt)=>{
-					bcrypt.hash(newUser.password,salt,(err,hash)=>{
-						if(err) throw err;
-						newUser.password = hash; 
-						newUser.save()
-						.then(user => {
-							req.flash('success_msg','You are now registered and can log in');
-							res.redirect('/users/login');
-						})
-						.catch(err=> {
-							console.log(err);
-							return;
-						})
-					});
 				});
-				console.log('newUser');
-				console.log(newUser);
+				var id;
+
+				eid.save()
+				.then(newEid=>{
+					const newUser = new User(
+					{
+						user_id: newEid._id,
+						name: req.body.name,
+						email: req.body.email,
+						password: req.body.password
+					});
+
+					bcrypt.genSalt(10,(err,salt)=>{
+						bcrypt.hash(newUser.password,salt,(err,hash)=>{
+							if(err) throw err;
+							newUser.password = hash; 
+							newUser.save()
+							.then(user => {
+								console.log(user);
+								req.flash('success_msg','You are now registered and can log in');
+								res.redirect('/users/login');
+							})
+							.catch(err=> {
+								console.log(err);
+								return;
+							})
+						});
+					});
+				})
+				.catch(err=>{
+					console.log(err);
+				});
 			}		
 		});
 	}
